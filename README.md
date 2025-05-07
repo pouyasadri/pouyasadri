@@ -42,10 +42,6 @@ From building e-commerce platforms as a **CTO at ReboTurn**, to delivering custo
 ## 📈 GitHub Stats
 
 <p align="center">
-  <img src="https://github-readme-streak-stats.herokuapp.com/?user=pouyasadri&theme=default" alt="GitHub Streak" />
-</p>
-
-<p align="center">
   <img src="https://github-readme-stats.vercel.app/api?username=pouyasadri&show_icons=true&count_private=true&hide=stars&theme=default" alt="Pouya's GitHub Stats" />
 </p>
 
