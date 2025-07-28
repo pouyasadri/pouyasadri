@@ -1,0 +1,27 @@
+{
+  "name": "pouyasadri",
+  "version": "1.0.0",
+  "description": "Personal portfolio and development showcase repository featuring a comprehensive Prisma schema for modern web applications",
+  "main": "index.js",
+  "scripts": {
+    "db:validate": "prisma validate",
+    "db:format": "prisma format",
+    "db:generate": "prisma generate",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "prisma",
+    "schema",
+    "database",
+    "documentation",
+    "best-practices"
+  ],
+  "author": "Pouya Sadri",
+  "license": "ISC",
+  "devDependencies": {
+    "prisma": "^6.12.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.12.0"
+  }
+}

@@ -1,0 +1,413 @@
+// =====================================================
+// PRISMA SCHEMA CONFIGURATION
+// =====================================================
+// This file defines the database schema using Prisma ORM
+// Generator and datasource configuration for PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================
+// ENUMS - Global Type Definitions
+// =====================================================
+// Define reusable enumeration types for consistent data values
+
+/// User account status enumeration
+/// Defines the current state of a user account
+enum UserStatus {
+  ACTIVE    // Account is active and can be used
+  INACTIVE  // Account is temporarily disabled
+  SUSPENDED // Account is suspended due to violations
+  PENDING   // Account is awaiting email verification
+}
+
+/// User role enumeration for access control
+/// Defines permission levels throughout the application
+enum UserRole {
+  USER        // Standard user with basic permissions
+  MODERATOR   // User with content moderation capabilities
+  ADMIN       // Administrator with elevated privileges
+  SUPER_ADMIN // Highest level administrator
+}
+
+/// Content publication status
+/// Tracks the lifecycle of publishable content
+enum PublicationStatus {
+  DRAFT     // Content is being written/edited
+  REVIEW    // Content is under review
+  PUBLISHED // Content is live and visible
+  ARCHIVED  // Content is no longer active but preserved
+}
+
+/// Priority levels for various entities
+/// Used for tasks, support tickets, and other prioritizable items
+enum PriorityLevel {
+  LOW       // Low priority items
+  MEDIUM    // Standard priority items
+  HIGH      // High priority items
+  CRITICAL  // Urgent items requiring immediate attention
+}
+
+// =====================================================
+// CORE USER MANAGEMENT MODELS
+// =====================================================
+// Models related to user accounts, authentication, and profiles
+
+/// User model represents a registered user in the system
+/// This is the core entity for authentication and user management
+model User {
+  // Primary identification
+  id        String   @id @default(cuid()) /// Unique identifier using CUID for better performance
+  email     String   @unique /// User's email address, must be unique across the system
+  username  String   @unique /// Display name for the user, must be unique
+  
+  // Authentication fields
+  passwordHash String /// Encrypted password hash for secure authentication
+  emailVerified Boolean @default(false) /// Whether the user has verified their email address
+  
+  // Profile information
+  firstName    String? /// User's first name (optional)
+  lastName     String? /// User's last name (optional)  
+  bio          String? @db.Text /// User biography or description
+  avatarUrl    String? /// URL to user's profile picture
+  website      String? /// User's personal website URL
+  location     String? /// User's location (city, country)
+  
+  // Account management
+  status    UserStatus @default(PENDING) /// Current account status
+  role      UserRole   @default(USER) /// User's role determining access permissions
+  isDeleted Boolean    @default(false) /// Soft delete flag to preserve data integrity
+  
+  // Timestamps for audit trail
+  createdAt DateTime @default(now()) /// Account creation timestamp
+  updatedAt DateTime @updatedAt /// Last profile update timestamp
+  lastLogin DateTime? /// Timestamp of user's last login
+  
+  // =====================================================
+  // RELATIONSHIPS
+  // =====================================================
+  
+  // User-generated content relationships
+  posts        Post[]        /// All posts created by this user
+  comments     Comment[]     /// All comments made by this user
+  likes        PostLike[]    /// All posts liked by this user
+  
+  // User session and security
+  sessions     UserSession[] /// Active user sessions for authentication
+  
+  // Social features
+  following    Follow[] @relation("UserFollowing") /// Users this user follows
+  followers    Follow[] @relation("UserFollowers") /// Users following this user
+  
+  // Notification preferences and history
+  notifications         Notification[] /// Notifications sent to this user
+  notificationSettings  NotificationSettings? /// User's notification preferences
+  
+  // Content management
+  categories   Category[] /// Categories created by this user (if they have permission)
+  
+  // Performance indexes for common queries
+  @@index([email]) /// Fast email lookups for authentication
+  @@index([username]) /// Fast username searches  
+  @@index([status]) /// Filter active/inactive users
+  @@index([createdAt]) /// Sort by registration date
+  
+  @@map("users") /// Maps to 'users' table in database
+}
+
+/// UserSession model tracks active user authentication sessions
+/// Enables secure session management and multi-device support
+model UserSession {
+  id        String   @id @default(cuid()) /// Unique session identifier
+  userId    String   /// Reference to the user who owns this session
+  token     String   @unique /// Unique session token for authentication
+  userAgent String?  /// Browser/device information for security tracking
+  ipAddress String?  /// IP address from which session was created
+  isActive  Boolean  @default(true) /// Whether session is currently active
+  expiresAt DateTime /// When this session expires
+  createdAt DateTime @default(now()) /// Session creation timestamp
+  updatedAt DateTime @updatedAt /// Last session activity timestamp
+  
+  // =====================================================
+  // RELATIONSHIPS
+  // =====================================================
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Performance indexes for session management
+  @@index([userId]) /// Find sessions by user
+  @@index([token]) /// Fast token lookups for authentication
+  @@index([expiresAt]) /// Clean up expired sessions
+  
+  @@map("user_sessions")
+}
+
+/// Follow model represents follower/following relationships between users
+/// Implements social networking functionality
+model Follow {
+  id          String   @id @default(cuid()) /// Unique relationship identifier
+  followerId  String   /// ID of the user who is following
+  followingId String   /// ID of the user being followed
+  createdAt   DateTime @default(now()) /// When the follow relationship was created
+  
+  // =====================================================
+  // RELATIONSHIPS
+  // =====================================================
+  
+  /// The user who is doing the following
+  follower  User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  /// The user being followed
+  following User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  // Ensure a user can't follow the same person twice
+  @@unique([followerId, followingId])
+  
+  // Performance indexes for social features
+  @@index([followerId]) /// Find who user is following
+  @@index([followingId]) /// Find user's followers
+  
+  @@map("follows")
+}
+
+// =====================================================
+// CONTENT MANAGEMENT MODELS
+// =====================================================
+// Models for managing posts, comments, and content organization
+
+/// Category model organizes content into logical groupings
+/// Enables content discovery and organization
+model Category {
+  id          String  @id @default(cuid()) /// Unique category identifier
+  name        String  @unique /// Category name, must be unique
+  slug        String  @unique /// URL-friendly version of category name
+  description String? @db.Text /// Optional category description
+  color       String? /// Hex color code for UI theming
+  icon        String? /// Icon identifier for visual representation
+  isActive    Boolean @default(true) /// Whether category is currently active
+  
+  // Hierarchy support for nested categories
+  parentId String?   /// Reference to parent category for hierarchical organization
+  parent   Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy") /// Child categories
+  
+  // Metadata
+  createdById String   /// ID of user who created this category
+  createdAt   DateTime @default(now()) /// Category creation timestamp
+  updatedAt   DateTime @updatedAt /// Last category update timestamp
+  
+  // =====================================================
+  // RELATIONSHIPS
+  // =====================================================
+  
+  createdBy User   @relation(fields: [createdById], references: [id]) /// User who created the category
+  posts     Post[] /// All posts in this category
+  
+  // Performance indexes for content organization
+  @@index([slug]) /// Fast category lookups by slug
+  @@index([parentId]) /// Find child categories
+  @@index([isActive]) /// Filter active categories
+  
+  @@map("categories")
+}
+
+/// Post model represents user-generated content posts
+/// Core content entity supporting rich text, media, and social features
+model Post {
+  id      String @id @default(cuid()) /// Unique post identifier
+  title   String /// Post title, required for all posts
+  slug    String @unique /// URL-friendly version of title for SEO
+  content String @db.Text /// Main post content in rich text format
+  excerpt String? /// Short summary of post content for previews
+  
+  // Media and attachments
+  featuredImageUrl String? /// URL to post's featured image
+  imageAlt         String? /// Alt text for featured image (accessibility)
+  
+  // Content management
+  status       PublicationStatus @default(DRAFT) /// Current publication status
+  isPublished  Boolean           @default(false) /// Whether post is visible to public
+  publishedAt  DateTime? /// When post was first published
+  
+  // SEO and metadata
+  metaTitle       String? /// Custom SEO title
+  metaDescription String? /// SEO meta description
+  tags            String[] /// Array of tags for content discovery
+  
+  // Engagement metrics
+  viewCount    Int @default(0) /// Number of times post has been viewed
+  likeCount    Int @default(0) /// Number of likes (denormalized for performance)
+  commentCount Int @default(0) /// Number of comments (denormalized for performance)
+  
+  // Content organization
+  categoryId String /// Reference to post's category
+  authorId   String /// Reference to post's author
+  
+  // Timestamps
+  createdAt DateTime @default(now()) /// Post creation timestamp
+  updatedAt DateTime @updatedAt /// Last post modification timestamp
+  
+  // =====================================================
+  // RELATIONSHIPS
+  // =====================================================
+  
+  author   User        @relation(fields: [authorId], references: [id]) /// Post author
+  category Category    @relation(fields: [categoryId], references: [id]) /// Post category
+  comments Comment[]   /// All comments on this post
+  likes    PostLike[]  /// All likes on this post
+  
+  // Performance indexes for content queries
+  @@index([status, isPublished]) /// Filter published content
+  @@index([authorId]) /// Find posts by author
+  @@index([categoryId]) /// Find posts by category
+  @@index([publishedAt]) /// Sort by publication date
+  @@index([slug]) /// Fast post lookups by slug
+  
+  @@map("posts")
+}
+
+/// Comment model represents user comments on posts
+/// Supports threaded discussions with nested replies
+model Comment {
+  id      String @id @default(cuid()) /// Unique comment identifier
+  content String @db.Text /// Comment text content
+  
+  // Hierarchy support for threaded comments
+  parentId String? /// Reference to parent comment for nested replies
+  parent   Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies") /// Child comment replies
+  
+  // Engagement
+  likeCount Int @default(0) /// Number of likes on this comment
+  
+  // Moderation
+  isDeleted Boolean @default(false) /// Soft delete flag for content moderation
+  isEdited  Boolean @default(false) /// Whether comment has been edited
+  
+  // References
+  postId   String /// Reference to the post this comment belongs to
+  authorId String /// Reference to comment author
+  
+  // Timestamps
+  createdAt DateTime @default(now()) /// Comment creation timestamp
+  updatedAt DateTime @updatedAt /// Last comment modification timestamp
+  
+  // =====================================================
+  // RELATIONSHIPS
+  // =====================================================
+  
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade) /// Post this comment belongs to
+  author User @relation(fields: [authorId], references: [id]) /// Comment author
+  
+  // Performance indexes for comment queries
+  @@index([postId]) /// Find comments for a post
+  @@index([authorId]) /// Find comments by author
+  @@index([parentId]) /// Find comment replies
+  
+  @@map("comments")
+}
+
+/// PostLike model tracks user likes on posts
+/// Enables social engagement features
+model PostLike {
+  id     String @id @default(cuid()) /// Unique like identifier
+  userId String /// Reference to user who liked the post
+  postId String /// Reference to the liked post
+  
+  createdAt DateTime @default(now()) /// When the like was created
+  
+  // =====================================================
+  // RELATIONSHIPS
+  // =====================================================
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade) /// User who liked
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade) /// Liked post
+  
+  // Ensure a user can only like a post once
+  @@unique([userId, postId])
+  @@map("post_likes")
+}
+
+// =====================================================
+// NOTIFICATION SYSTEM MODELS
+// =====================================================
+// Models for managing user notifications and preferences
+
+/// Notification model represents system notifications sent to users
+/// Supports various notification types and delivery methods
+model Notification {
+  id      String @id @default(cuid()) /// Unique notification identifier
+  title   String /// Notification title/subject
+  message String @db.Text /// Notification content/body
+  type    String /// Notification type (e.g., 'post_like', 'new_follower', 'comment')
+  
+  // Notification status
+  isRead   Boolean @default(false) /// Whether user has read this notification
+  isEmail  Boolean @default(false) /// Whether notification was sent via email
+  isPush   Boolean @default(false) /// Whether notification was sent as push notification
+  
+  // References and metadata
+  userId      String    /// Reference to notification recipient
+  relatedId   String?   /// ID of related entity (post, comment, etc.)
+  relatedType String?   /// Type of related entity
+  actionUrl   String?   /// URL for notification action
+  
+  // Timestamps
+  createdAt DateTime @default(now()) /// Notification creation timestamp
+  readAt    DateTime? /// When notification was marked as read
+  
+  // =====================================================
+  // RELATIONSHIPS
+  // =====================================================
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade) /// Notification recipient
+  
+  // Performance indexes for notification queries
+  @@index([userId, isRead]) /// Find unread notifications for user
+  @@index([createdAt]) /// Sort notifications by date
+  @@index([type]) /// Filter notifications by type
+  
+  @@map("notifications")
+}
+
+/// NotificationSettings model stores user preferences for notifications
+/// Allows users to control how and when they receive notifications
+model NotificationSettings {
+  id     String @id @default(cuid()) /// Unique settings identifier
+  userId String @unique /// Reference to user (one-to-one relationship)
+  
+  // Email notification preferences
+  emailOnNewFollower Boolean @default(true) /// Email when someone follows user
+  emailOnPostLike    Boolean @default(true) /// Email when someone likes user's post
+  emailOnComment     Boolean @default(true) /// Email when someone comments on user's post
+  emailOnReply       Boolean @default(true) /// Email when someone replies to user's comment
+  emailOnMention     Boolean @default(true) /// Email when user is mentioned
+  
+  // Push notification preferences
+  pushOnNewFollower Boolean @default(true) /// Push notification for new followers
+  pushOnPostLike    Boolean @default(false) /// Push notification for post likes
+  pushOnComment     Boolean @default(true) /// Push notification for comments
+  pushOnReply       Boolean @default(true) /// Push notification for replies
+  pushOnMention     Boolean @default(true) /// Push notification for mentions
+  
+  // General preferences
+  digestFrequency   String  @default("weekly") /// How often to send digest emails (daily, weekly, monthly, never)
+  marketingEmails   Boolean @default(false) /// Whether to receive marketing emails
+  
+  // Timestamps
+  createdAt DateTime @default(now()) /// Settings creation timestamp
+  updatedAt DateTime @updatedAt /// Last settings update timestamp
+  
+  // =====================================================
+  // RELATIONSHIPS
+  // =====================================================
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade) /// Settings owner
+  
+  @@map("notification_settings")
+}
