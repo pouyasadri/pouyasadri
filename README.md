@@ -49,6 +49,8 @@ From building e-commerce platforms as a **CTO at ReboTurn**, to delivering custo
   <img src="https://github-profile-summary-cards.vercel.app/api/cards/profile-details?username=pouyasadri&theme=default" alt="GitHub Summary" />
 </p>
 
+![My GitHub Game](game.gif)
+
 ---
 
 ## 📌 Current Focus
