@@ -41,15 +41,16 @@ From building e-commerce platforms as a **CTO at ReboTurn**, to delivering custo
 ## 📈 GitHub Stats
 
 <p align="center">
-  <img src="https://github-readme-stats.vercel.app/api?username=pouyasadri&show_icons=true&hide=stars&theme=default" alt="Pouya's GitHub Stats" />
-</p>
-
-<p align="center">
-  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=pouyasadri&layout=compact&theme=default" alt="Top Languages" />
+  <img src="https://img.shields.io/github/followers/pouyasadri?label=Follow&style=social" alt="Followers" />
 </p>
 
 <p align="center">
   <img src="https://ghchart.rshah.org/pouyasadri" alt="GitHub Contribution Chart" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/languages/top/pouyasadri/pouyasadri?color=blue" alt="Top language" />
+  <img src="https://img.shields.io/github/last-commit/pouyasadri/pouyasadri?color=green" alt="Last commit" />
 </p>
 ---
 
