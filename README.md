@@ -38,19 +38,19 @@ From building e-commerce platforms as a **CTO at ReboTurn**, to delivering custo
 - **Tools & Others**: Git, CI/CD, RESTful API, TypeScript
 
 ---
-
 ## 📈 GitHub Stats
 
 <p align="center">
-  <img src="https://github-readme-stats.vercel.app/api?username=pouyasadri&show_icons=true&count_private=true&hide=stars&theme=default" alt="Pouya's GitHub Stats" />
+  <img src="https://github-readme-stats.vercel.app/api?username=pouyasadri&show_icons=true&hide=stars&theme=default" alt="Pouya's GitHub Stats" />
 </p>
 
 <p align="center">
-  <img src="https://github-profile-summary-cards.vercel.app/api/cards/profile-details?username=pouyasadri&theme=default" alt="GitHub Summary" />
+  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=pouyasadri&layout=compact&theme=default" alt="Top Languages" />
 </p>
 
-![My GitHub Game](game.gif)
-
+<p align="center">
+  <img src="https://ghchart.rshah.org/pouyasadri" alt="GitHub Contribution Chart" />
+</p>
 ---
 
 ## 📌 Current Focus
